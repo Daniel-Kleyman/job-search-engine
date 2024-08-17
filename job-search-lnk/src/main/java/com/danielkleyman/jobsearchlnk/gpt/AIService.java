@@ -1,4 +1,4 @@
-package com.danielkleyman.jobsearchcommon.gpt;
+package com.danielkleyman.jobsearchlnk.gpt;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,36 +15,19 @@ public class AIService {
     private final String apiKey;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public AIService() {
-        this.restTemplate = new RestTemplate();
+    public AIService(RestTemplate restTemplate
+    ) {
+        this.restTemplate = restTemplate;
         this.apiUrl = System.getenv("API_URL");
         this.apiKey = System.getenv("API_KEY");
     }
 
     public int getResponse(String input) {
-        // Construct request headers
-        HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + apiKey);
-        headers.set("Content-Type", "application/json");
-
         // Create the prompt string
         String rolePrompt = Constants.task1 + Constants.CV + Constants.task2;
-        // Create request body
-        String requestBody = String.format(
-                "{\"model\": \"gpt-4o-mini\", \"messages\": [" +
-                        "{\"role\": \"system\", \"content\": \"%s\"}, " +
-                        "{\"role\": \"user\", \"content\": \"%s\"}]" +
-                        "}",
-                escapeJson(rolePrompt),
-                escapeJson(input)
-        );
-//        String requestBody = String.format("{\"model\": \"gpt-4o-mini\", \"messages\": [{\"role\": \"system\", \"content\": \"You are a poetic assistant, skilled in explaining complex programming concepts with creative flair.\"}, {\"role\": \"user\", \"content\": \"Compose a poem that explains the concept of recursion in programming.\"}] }");
-        // Create HttpEntity with headers and body
-        HttpEntity<String> requestEntity = new HttpEntity<>(requestBody, headers);
-
+        HttpEntity<String> requestEntity = new HttpEntity<>(getRequestBody(rolePrompt, input), getHeaders());
         // Make the API call
         ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, requestEntity, String.class);
-
         // Check if the response is successful
         if (response.getStatusCode() == HttpStatus.OK) {
             // Extract the body as a String
@@ -62,6 +45,26 @@ public class AIService {
         } else {
             throw new RuntimeException("API request failed with status: " + response.getStatusCode());
         }
+    }
+
+    private String getRequestBody(String rolePrompt, String input) {
+        // Create request body
+        return String.format(
+                "{\"model\": \"gpt-4o-mini\", \"messages\": [" +
+                        "{\"role\": \"system\", \"content\": \"%s\"}, " +
+                        "{\"role\": \"user\", \"content\": \"%s\"}]" +
+                        "}",
+                escapeJson(rolePrompt),
+                escapeJson(input)
+        );
+    }
+
+    private HttpHeaders getHeaders() {
+        // Construct request headers
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("Authorization", "Bearer " + apiKey);
+        headers.set("Content-Type", "application/json");
+        return headers;
     }
 
     private String escapeJson(String value) {

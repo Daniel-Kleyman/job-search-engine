@@ -1,7 +1,6 @@
 package com.danielkleyman.jobsearchlnk.service;
 
-
-import com.danielkleyman.jobsearchcommon.gpt.AIService;
+import com.danielkleyman.jobsearchlnk.gpt.AIService;
 import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
@@ -9,18 +8,26 @@ import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.*;
+
+import static com.danielkleyman.jobsearchlnk.service.LnkService.LOGGER;
+
+
 
 @Component
 public class ExtractJobDetails {
-    private final AIService aiService;
+    public final AIService aiService;
     int jobsVisibleOnPage;
+    private final Set<String> processedUrls;
 
     public ExtractJobDetails() {
-        this.aiService = new AIService();
+        this.aiService = new AIService(new RestTemplate());
         this.jobsVisibleOnPage = 0;
+        this.processedUrls = Collections.synchronizedSet(new HashSet<>()); // Thread-safe set for URL tracking
     }
 
     public void extractJobDetails(WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails) {
@@ -53,38 +60,82 @@ public class ExtractJobDetails {
             System.err.println("Unexpected error: " + e.getMessage());
         }
         System.out.println("Jobs visible: " + jobsVisibleOnPage);
+        jobsVisibleOnPage = 0;
     }
 
-    private void jobCardsParsing(WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails, List<WebElement> jobCards) {
+    private void jobCardsParsing(WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails, List<WebElement> jobCards) throws java.util.concurrent.TimeoutException {
         for (int i = 0; i < jobCards.size(); i++) {
-            jobsVisibleOnPage++;
-            WebElement jobCard = jobCards.get(i);
-            System.out.println("get card number: " + i);
-            String url = "";
-            List<String> details = new ArrayList<>();
-            try {
-                // Extract job title and URL
-                boolean extractionTitleAndUrl = extractTitleAndUrl(jobCard, url, details);
-                if (!extractionTitleAndUrl) {
-                    continue; // Skip to the next job card if extraction failed
-                }
-                showExpandedContent(wait, i, jobCard, jobCards);
-                boolean extractionExpandedContent = extractExpandedContent(driver, details);
-                if (!extractionExpandedContent) {
-                    continue; // Skip to the next job card if extraction failed
-                }
-
-                // Extract company name
-                extractCompanyName(details, wait);
-                // Extract city
-                extractCity(details, wait);
-                // Add job details to the map
-                jobDetails.putIfAbsent(url, details);
-
-            } catch (Exception e) {
-                System.err.println("Unexpected error extracting details from job card: " + e.getMessage());
+            int timeout = LnkService.jobCount * 10000;
+            final int index = i;
+            boolean stopParsing = executeWithTimeout(() -> singleCardParsing(jobCards, index, driver, wait, jobDetails), timeout);
+            if (!stopParsing) {
+                continue;
             }
         }
+    }
+
+    private boolean singleCardParsing(List<WebElement> jobCards, int i, WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails) {
+        jobsVisibleOnPage++;
+        WebElement jobCard = jobCards.get(i);
+        System.out.println("get card number: " + i);
+        List<String> url = new ArrayList<>();
+        List<String> details = new ArrayList<>();
+        try {
+            // Extract job title and URL
+            boolean extractionTitleAndUrl = executeWithTimeout(() -> extractTitleAndUrl(jobCard, details, url), 20000);
+            if (!extractionTitleAndUrl) {
+                return false; // Skip to the next job card if extraction failed
+            }
+            String jobUrl = url.get(0);
+            // Skip processing if URL has already been processed
+            if (processedUrls.contains(jobUrl)) {
+                System.out.println("URL already processed: " + jobUrl);
+                return false; // Continue with the next job card
+            }
+            showExpandedContent(wait, i, jobCard, jobCards);
+            boolean extractionExpandedContent = extractExpandedContent(driver, details);
+            if (!extractionExpandedContent) {
+                return false; // Skip to the next job card if extraction failed
+            }
+            // Extract company name
+            extractCompanyName(details, wait);
+            // Extract city
+            extractCity(details, wait);
+
+            // Add job details to the map
+            jobDetails.putIfAbsent(jobUrl, details);
+            processedUrls.add(jobUrl);
+        } catch (Exception e) {
+            System.err.println("Unexpected error extracting details from job card: " + e.getMessage());
+        }
+        return true;
+    }
+
+    private boolean executeWithTimeout(Callable<Boolean> callable, long timeoutMillis) throws TimeoutException, java.util.concurrent.TimeoutException {
+        int maxRetries = 3;
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            Future<Boolean> future = executor.submit(callable);
+
+            try {
+                return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
+            } catch (TimeoutException | java.util.concurrent.TimeoutException e) {
+                if (attempt == maxRetries) {
+                    // If the last attempt fails, propagate the TimeoutException
+                    throw e;
+                }
+                System.out.println("Retry attempt " + attempt + " failed due to timeout, retrying...");
+            } catch (InterruptedException | ExecutionException e) {
+                LOGGER.severe("Exception while executing callable: " + e.getMessage());
+                return false;
+            } finally {
+                future.cancel(true); // Optionally cancel the future if it's still running
+            }
+        }
+
+        executor.shutdownNow(); // Ensure that the executor is shut down after all retries
+        return false;
     }
 
     private void extractCity(List<String> details, WebDriverWait wait) {
@@ -159,7 +210,7 @@ public class ExtractJobDetails {
         }
     }
 
-    private boolean extractTitleAndUrl(WebElement jobCard, String url, List<String> details) {
+    private boolean extractTitleAndUrl(WebElement jobCard, List<String> details, List<String> url) {
         String title = "";
         try {
             WebElement titleElement = jobCard.findElement(By.xpath(".//h3[contains(@class, 'base-search-card__title')]"));
@@ -171,8 +222,8 @@ public class ExtractJobDetails {
             details.add(title);
 
             WebElement urlElement = jobCard.findElement(By.cssSelector("a.base-card__full-link"));
-            url = urlElement.getAttribute("href");
-
+            String urlAddress = urlElement.getAttribute("href");
+            url.add(urlAddress);
         } catch (NoSuchElementException e) {
             System.err.println("Job title or URL element not found in a job card.");
             return false; // Skip this job card if title or URL is missing
@@ -180,36 +231,17 @@ public class ExtractJobDetails {
         return true;
     }
 
-
-    private static boolean filterDetails(List<String> details) {
-        Set<String> excludeKeywords = Set.of("senior", "lead", "leader", "devops", "manager", "qa", "mechanical", "infrastructure", "integration", "civil",
+    private static boolean filterTitle(String jobTitle) {
+        Set<String> excludeKeywords = Set.of(
+                "senior", "lead", "leader", "devops", "manager", "qa", "mechanical", "infrastructure", "integration", "civil",
                 "principal", "customer", "embedded", "system", " verification", "electrical", "support", "complaint", "solution", "solutions", "simulation", "technical",
                 "manufacturing", "validation", "finops", "hardware", "devsecops", "motion", "machine Learning", "design", "sr.", "quality", "architect", "head",
                 "director", "president", "executive", "detection", "industrial", "chief", "specialist", "algorithm", "architecture", "admin", " researcher",
                 " data science", "webmaster", "medical", "associate", "mrb", "accountant", "waiter", "dft", "test", "musicologist", "sales", "media", "product",
                 "reliability", "account", "representative", "Architect", "Analyst", "Account", "Executive", "Specialist", "Associate", "devtest", "big data", "digital",
                 "coordinator", "intern", "researcher", "network", "security", "malware", " intelligence", " algo-dev", "electro-optics", "secops", "implementer",
-                "ml", "picker", "revenue", "controller", "פלנר", "טכנאי");
-        // Convert the job title to lower case for case-insensitive comparison
-        String jobTitle = details.get(0).toLowerCase();
-        String aboutJob = details.get(3).toLowerCase();
-        // Exclude entries if the job title contains any of the excludeKeywords
-        boolean shouldExclude = excludeKeywords.stream()
-                .anyMatch(keyword -> jobTitle.contains(keyword));
-        // Include only entries that contain at least one of the includeKeywords
-
-        boolean shouldAlsoInclude = aboutJob.contains("java");
-
-        return !shouldExclude && shouldAlsoInclude;
-    }
-
-    private static boolean filterTitle(String jobTitle) {
-        Set<String> excludeKeywords = Set.of(
-                "senior", "lead", "leader", "devops", "manager", "qa", "mechanical", "infrastructure", "integration", "civil",
-                "principal", "customer", "embedded", "system", "verification", "electrical", "support", "complaint", "solution", "solutions",
-                "simulation", "technical", "manufacturing", "validation", "finops", "hardware", "devsecops", "motion", "machine learning",
-                "design", "sr", "quality", "staff", "compliance", "administrator", "marketing", "director", "bookkeeper", "inspector", "nurse",
-                "training", "expert");
+                "ml", "picker", "revenue", "controller", "פלנר", "טכנאי", "emulation", "tester", "counsel", "administrative", "assistant", "production", " scientist",
+                "penetration", " investigations", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff");
         Set<String> includeKeywords = Set.of(
                 "developer", "engineer", "programmer", "backend", "back-end", "back end", "fullstack", "full-stack", "full stack",
                 "software", "fs", "java", "מתחנת", "מפתח"
@@ -217,7 +249,7 @@ public class ExtractJobDetails {
 
         // Check if any exclude keyword is present in the job title
         boolean shouldExclude = excludeKeywords.stream()
-                .anyMatch(keyword -> jobTitle.contains(keyword));
+                .anyMatch(jobTitle::contains);
 
         // Check if any include keyword is present in the job title
 //        boolean shouldInclude = includeKeywords.stream()
@@ -229,16 +261,14 @@ public class ExtractJobDetails {
         return !shouldExclude;
     }
 
-
     private static boolean filterDescription(String aboutJob) {
         String aboutJob1 = aboutJob.toLowerCase();
         Set<String> includeKeywords = Set.of("java", "spring", "microservice", "react", "javascript", "oop",
                 "typescript", "backend", "back-end", "back end", "fullstack", "full-stack", "full stack"
         );
-        boolean shouldInclude = includeKeywords.stream()
-                .anyMatch(keyword -> aboutJob1.contains(keyword));
 
-        return shouldInclude;
+        return includeKeywords.stream()
+                .anyMatch(aboutJob1::contains);
 
     }
 }

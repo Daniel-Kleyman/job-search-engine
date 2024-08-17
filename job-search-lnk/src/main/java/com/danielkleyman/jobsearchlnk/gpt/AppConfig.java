@@ -1,4 +1,4 @@
-package com.danielkleyman.jobsearchcommon.gpt;
+package com.danielkleyman.jobsearchlnk.gpt;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;

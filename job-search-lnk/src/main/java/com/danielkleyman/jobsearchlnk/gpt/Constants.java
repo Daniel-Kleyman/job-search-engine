@@ -1,4 +1,4 @@
-package com.danielkleyman.jobsearchcommon.gpt;
+package com.danielkleyman.jobsearchlnk.gpt;
 
 public final class Constants {
     private Constants() {

@@ -1,7 +1,5 @@
 package com.danielkleyman.jobsearchlnk.service;
 
-import com.danielkleyman.jobsearchcommon.service.WriteToExcel;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
@@ -14,8 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -26,32 +22,28 @@ import java.util.logging.Logger;
 @Service
 public class LnkService {
 
+    private static final long SCHEDULED_TIME = 900000;
+    private static final String SCHEDULED_TIME_STRING = "900";
     public static final Logger LOGGER = Logger.getLogger(LnkService.class.getName());
     public static final String CHROME_DRIVER_PATH = System.getenv("CHROME_DRIVER_PATH");
-    private static final String L_LOGIN_URL = System.getenv("L_LOGIN_URL");
-    private static final String USERNAME = System.getenv("L_USERNAME");
-    private static final String PASSWORD = System.getenv("L_PASSWORD");
-    private static final List<String> KEYWORDS = List.of(" ");
-    private String firstUrl = "https://www.linkedin.com/jobs/search?keywords=&location=Israel&geoId=101620260&f_TPR=r8000&position=1&pageNum=0";
-    private boolean morePages = true;
-    private Map<String, List<String>> jobDetails = new LinkedHashMap<>();
+    private static final String WEBSITE_NAME = "Linkedin";
+    private final String firstUrl = String.format("https://www.linkedin.com/jobs/search?keywords=&location=Israel&geoId=101620260&f_TPR=r%s&position=1&pageNum=0", SCHEDULED_TIME_STRING);
+    private final Map<String, List<String>> jobDetails = new LinkedHashMap<>();
 
-    private static int jobCount;
+    public static int jobCount;
     private final ExtractJobDetails extractJobDetails; // Injected dependency
 
     @Autowired
     public LnkService(ExtractJobDetails extractJobDetails) {
 
         this.extractJobDetails = extractJobDetails; // Initialize injected dependency
-        this.jobCount = 0;
+        jobCount = 0;
     }
 
-
-    // @Scheduled(cron = "0 0 * * * *") // Runs at the start of every hour
-    @Scheduled(fixedRate = 1800000)
+    @Scheduled(fixedRate = SCHEDULED_TIME)
     public void scheduledGetResults() {
         WebDriver localDriver = null;
-        WebDriverWait localWait = null;
+        WebDriverWait localWait;
         try {
             localDriver = initializeWebDriver();
             localWait = new WebDriverWait(localDriver, Duration.ofSeconds(10));
@@ -66,7 +58,7 @@ public class LnkService {
     }
 
     public void getResults(WebDriver driver, WebDriverWait wait) {
-        Scrolling scroller = new Scrolling(driver, wait);
+        Scrolling scroller = new Scrolling(driver);
         long startTime = System.currentTimeMillis();
         try {
             openPage(driver, wait);
@@ -76,7 +68,7 @@ public class LnkService {
             scroller.stop();
             LOGGER.info("Scrolling stopped");
             extractJobDetails.extractJobDetails(driver, wait, jobDetails);
-            WriteToExcel.writeToExcel(jobDetails);
+            WriteToExcel.writeToExcel(jobDetails, WEBSITE_NAME);
             long endTime = System.currentTimeMillis();
             long totalTime = (endTime - startTime) / 1000;
             LOGGER.info("Extraction completed in " + totalTime + " seconds");
@@ -115,7 +107,7 @@ public class LnkService {
                         Thread.currentThread().interrupt();
                         LOGGER.severe("Interrupted while waiting: " + ex.getMessage());
                     }
-                } catch (TimeoutException es) {
+                } catch (TimeoutException ignored) {
                 }
                 LOGGER.info("reloading page");
             }
@@ -154,33 +146,7 @@ public class LnkService {
             LOGGER.severe("Failed to parse job count: " + e.getMessage());
             return;
         }
-
         LOGGER.info("Job count: " + jobCount);
-    }
-
-    public static void saveMapToJson(Map<String, List<String>> jobDetails) {
-        String filePath = "C:\\Users\\Daniel\\IdeaProjects\\position-finder\\testJson.json";
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            mapper.writeValue(new File(filePath), jobDetails);
-            LOGGER.info("Map saved to JSON file: " + filePath);
-        } catch (IOException e) {
-            LOGGER.severe("Error saving map to JSON file: " + e.getMessage());
-        }
-    }
-
-    public static Map<String, List<String>> loadMapFromJson() {
-        String filePath = "C:\\Users\\Daniel\\IdeaProjects\\position-finder\\testJson.json";
-        ObjectMapper mapper = new ObjectMapper();
-        try {
-            Map<String, List<String>> jobDetailsTest = mapper.readValue(new File(filePath),
-                    mapper.getTypeFactory().constructMapType(Map.class, String.class, List.class));
-            LOGGER.info("Map loaded from JSON file: " + filePath);
-            return jobDetailsTest;
-        } catch (IOException e) {
-            LOGGER.severe("Error loading map from JSON file: " + e.getMessage());
-            return new LinkedHashMap<>();
-        }
     }
 }
 
