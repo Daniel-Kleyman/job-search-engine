@@ -10,16 +10,16 @@ import org.springframework.web.client.RestTemplate;
 public class AIService {
 
 
-    private final RestTemplate restTemplate;
-    private final String apiUrl;
-    private final String apiKey;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final RestTemplate REST_TEMPLATE;
+    private final String API_URL;
+    private final String API_KEY;
+    private final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public AIService(RestTemplate restTemplate
     ) {
-        this.restTemplate = restTemplate;
-        this.apiUrl = System.getenv("API_URL");
-        this.apiKey = System.getenv("API_KEY");
+        this.REST_TEMPLATE = restTemplate;
+        this.API_URL = System.getenv("API_URL");
+        this.API_KEY = System.getenv("API_KEY");
     }
 
     public int getResponse(String input) {
@@ -27,7 +27,7 @@ public class AIService {
         String rolePrompt = Constants.task1 + Constants.CV + Constants.task2;
         HttpEntity<String> requestEntity = new HttpEntity<>(getRequestBody(rolePrompt, input), getHeaders());
         // Make the API call
-        ResponseEntity<String> response = restTemplate.exchange(apiUrl, HttpMethod.POST, requestEntity, String.class);
+        ResponseEntity<String> response = REST_TEMPLATE.exchange(API_URL, HttpMethod.POST, requestEntity, String.class);
         // Check if the response is successful
         if (response.getStatusCode() == HttpStatus.OK) {
             // Extract the body as a String
@@ -35,7 +35,7 @@ public class AIService {
             // Parse the response body to an integer
             try {
                 // Parse the JSON response to extract the content field
-                JsonNode rootNode = objectMapper.readTree(responseBody);
+                JsonNode rootNode = OBJECT_MAPPER.readTree(responseBody);
                 JsonNode contentNode = rootNode.path("choices").get(0).path("message").path("content");
                 String contentValue = contentNode.asText();
                 return Integer.parseInt(contentValue); // This is the return statement
@@ -62,7 +62,7 @@ public class AIService {
     private HttpHeaders getHeaders() {
         // Construct request headers
         HttpHeaders headers = new HttpHeaders();
-        headers.set("Authorization", "Bearer " + apiKey);
+        headers.set("Authorization", "Bearer " + API_KEY);
         headers.set("Content-Type", "application/json");
         return headers;
     }

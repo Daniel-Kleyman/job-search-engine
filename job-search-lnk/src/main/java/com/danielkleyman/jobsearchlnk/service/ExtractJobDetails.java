@@ -17,7 +17,6 @@ import java.util.concurrent.*;
 import static com.danielkleyman.jobsearchlnk.service.LnkService.LOGGER;
 
 
-
 @Component
 public class ExtractJobDetails {
     public final AIService aiService;
@@ -92,6 +91,12 @@ public class ExtractJobDetails {
                 System.out.println("URL already processed: " + jobUrl);
                 return false; // Continue with the next job card
             }
+            int positionIndex = jobUrl.indexOf("position");
+            String extractedPart = jobUrl.substring(0, positionIndex + "position".length());
+            if (LnkService.alreadyAdded.contains(extractedPart)) {
+                System.out.println("URL already been added: " + jobUrl);
+                return false; // Continue with the next job card
+            }
             showExpandedContent(wait, i, jobCard, jobCards);
             boolean extractionExpandedContent = extractExpandedContent(driver, details);
             if (!extractionExpandedContent) {
@@ -105,6 +110,7 @@ public class ExtractJobDetails {
             // Add job details to the map
             jobDetails.putIfAbsent(jobUrl, details);
             processedUrls.add(jobUrl);
+            LnkService.alreadyAdded.add(extractedPart);
         } catch (Exception e) {
             System.err.println("Unexpected error extracting details from job card: " + e.getMessage());
         }
@@ -241,7 +247,7 @@ public class ExtractJobDetails {
                 "reliability", "account", "representative", "Architect", "Analyst", "Account", "Executive", "Specialist", "Associate", "devtest", "big data", "digital",
                 "coordinator", "intern", "researcher", "network", "security", "malware", " intelligence", " algo-dev", "electro-optics", "secops", "implementer",
                 "ml", "picker", "revenue", "controller", "פלנר", "טכנאי", "emulation", "tester", "counsel", "administrative", "assistant", "production", " scientist",
-                "penetration", " investigations", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff");
+                "penetration", " investigations", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff", "automation");
         Set<String> includeKeywords = Set.of(
                 "developer", "engineer", "programmer", "backend", "back-end", "back end", "fullstack", "full-stack", "full stack",
                 "software", "fs", "java", "מתחנת", "מפתח"

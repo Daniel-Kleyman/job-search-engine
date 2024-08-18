@@ -13,9 +13,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -27,8 +25,9 @@ public class LnkService {
     public static final Logger LOGGER = Logger.getLogger(LnkService.class.getName());
     public static final String CHROME_DRIVER_PATH = System.getenv("CHROME_DRIVER_PATH");
     private static final String WEBSITE_NAME = "Linkedin";
-    private final String firstUrl = String.format("https://www.linkedin.com/jobs/search?keywords=&location=Israel&geoId=101620260&f_TPR=r%s&position=1&pageNum=0", SCHEDULED_TIME_STRING);
-    private final Map<String, List<String>> jobDetails = new LinkedHashMap<>();
+    private final String MAIN_URL = String.format("https://www.linkedin.com/jobs/search?keywords=&location=Israel&geoId=101620260&f_TPR=r%s&position=1&pageNum=0", SCHEDULED_TIME_STRING);
+    private final Map<String, List<String>> JOB_DETAILS = new LinkedHashMap<>();
+    public static Set<String> alreadyAdded = new HashSet<>();
 
     public static int jobCount;
     private final ExtractJobDetails extractJobDetails; // Injected dependency
@@ -67,13 +66,13 @@ public class LnkService {
             Thread.sleep((long) (jobCount * 0.6 * 1000));
             scroller.stop();
             LOGGER.info("Scrolling stopped");
-            extractJobDetails.extractJobDetails(driver, wait, jobDetails);
-            WriteToExcel.writeToExcel(jobDetails, WEBSITE_NAME);
+            extractJobDetails.extractJobDetails(driver, wait, JOB_DETAILS);
+            WriteToExcel.writeToExcel(JOB_DETAILS, WEBSITE_NAME);
             long endTime = System.currentTimeMillis();
             long totalTime = (endTime - startTime) / 1000;
             LOGGER.info("Extraction completed in " + totalTime + " seconds");
-            LOGGER.info("Jobs parsed: " + jobDetails.size());
-            jobDetails.clear();
+            LOGGER.info("Jobs parsed: " + JOB_DETAILS.size());
+            JOB_DETAILS.clear();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
@@ -87,7 +86,7 @@ public class LnkService {
     private void openPage(WebDriver driver, WebDriverWait wait) {
         boolean reload = true;
         while (reload) {
-            driver.get(firstUrl);
+            driver.get(MAIN_URL);
             try {
                 WebElement jobCounter = wait.until(ExpectedConditions.visibilityOfElementLocated(
                         By.cssSelector(".results-context-header__job-count")));
