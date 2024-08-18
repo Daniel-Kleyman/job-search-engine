@@ -1,8 +1,7 @@
-package com.danielkleyman.jobsearchlnk.service;
+package com.danielkleyman.jobsearchind.service;
 
-import com.danielkleyman.jobsearchlnk.gpt.AIService;
+
 import org.openqa.selenium.By;
-import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -14,7 +13,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static com.danielkleyman.jobsearchlnk.service.LnkService.LOGGER;
+import static com.danielkleyman.jobsearchind.service.IndService.LOGGER;
 
 
 @Component
@@ -60,9 +59,9 @@ public class ExtractJobDetails {
         jobsVisibleOnPage = 0;
     }
 
-    private void jobCardsParsing(WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails, List<WebElement> jobCards) throws java.util.concurrent.TimeoutException {
+    private void jobCardsParsing(WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails, List<WebElement> jobCards) throws TimeoutException {
         for (int i = 0; i < jobCards.size(); i++) {
-            int timeout = LnkService.jobCount * 10000;
+            int timeout = IndService.jobCount * 10000;
             final int index = i;
             boolean stopParsing = executeWithTimeout(() -> singleCardParsing(jobCards, index, driver, wait, jobDetails), timeout);
             if (!stopParsing) {
@@ -87,7 +86,7 @@ public class ExtractJobDetails {
             // Skip processing if URL has already been processed
             int positionIndex = jobUrl.indexOf("position");
             String extractedPart = jobUrl.substring(0, positionIndex + "position".length());
-            if (LnkService.alreadyAdded.contains(extractedPart)) {
+            if (IndService.alreadyAdded.contains(extractedPart)) {
                 System.out.println("URL already been added: " + jobUrl);
                 return false; // Continue with the next job card
             }
@@ -103,14 +102,14 @@ public class ExtractJobDetails {
 
             // Add job details to the map
             jobDetails.putIfAbsent(jobUrl, details);
-            LnkService.alreadyAdded.add(extractedPart);
+            IndService.alreadyAdded.add(extractedPart);
         } catch (Exception e) {
             System.err.println("Unexpected error extracting details from job card: " + e.getMessage());
         }
         return true;
     }
 
-    private boolean executeWithTimeout(Callable<Boolean> callable, long timeoutMillis) throws TimeoutException, java.util.concurrent.TimeoutException {
+    private boolean executeWithTimeout(Callable<Boolean> callable, long timeoutMillis) throws TimeoutException, TimeoutException {
         int maxRetries = 3;
         ExecutorService executor = Executors.newSingleThreadExecutor();
 
@@ -119,7 +118,7 @@ public class ExtractJobDetails {
 
             try {
                 return future.get(timeoutMillis, TimeUnit.MILLISECONDS);
-            } catch (TimeoutException | java.util.concurrent.TimeoutException e) {
+            } catch (TimeoutException e) {
                 if (attempt == maxRetries) {
                     // If the last attempt fails, propagate the TimeoutException
                     throw e;
@@ -142,7 +141,7 @@ public class ExtractJobDetails {
             WebElement cityElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("span.topcard__flavor.topcard__flavor--bullet")));
             String city = cityElement.getText().trim();
             details.add(city);
-        } catch (NoSuchElementException | TimeoutException e) {
+        } catch (NoSuchElementException e) {
             System.err.println("City element not found: " + e.getMessage());
             details.add("City not available");
         }
@@ -153,7 +152,7 @@ public class ExtractJobDetails {
             WebElement companyElement = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a.topcard__org-name-link")));
             String companyName = companyElement.getText();
             details.add(companyName);
-        } catch (NoSuchElementException | TimeoutException e) {
+        } catch (NoSuchElementException e) {
             System.err.println("Company name element not found: " + e.getMessage());
             details.add("Company name not available");
         }
@@ -163,25 +162,20 @@ public class ExtractJobDetails {
         // Use a shorter wait for the expanded content
         WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(1));
         WebElement expandedContent = null;
-        try {
-            expandedContent = shortWait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.show-more-less-html__markup")));
-            String extendedText = expandedContent.getText();
-            if (!filterDescription(extendedText)) {
-                System.out.println("Extended text excluded for job: " + details.get(0));
-                return false; // Skip this job card if the extended text does not match filter criteria
-            }
-            int aiResponse = aiService.getResponse(extendedText);
-            System.out.println(" " + details.get(0) + " gpt score = " + aiResponse);
-            if (aiResponse < 21) {
-                //   System.out.println("text for job title:  " + details.get(0) + " excluded by ai = " + aiResponse);
-                return false; // Skip this job card if the extended text does not match filter criteria
-            }
-            details.add(extendedText);
-            //                    System.out.println("Extended text added: " + extendedText);
-        } catch (TimeoutException e) {
-            System.err.println("Extended content not found within 1 second.");
-            details.add("Extended text not available");
+        expandedContent = shortWait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("div.show-more-less-html__markup")));
+        String extendedText = expandedContent.getText();
+        if (!filterDescription(extendedText)) {
+            System.out.println("Extended text excluded for job: " + details.get(0));
+            return false; // Skip this job card if the extended text does not match filter criteria
         }
+        int aiResponse = aiService.getResponse(extendedText);
+        System.out.println(" " + details.get(0) + " gpt score = " + aiResponse);
+        if (aiResponse < 21) {
+            //   System.out.println("text for job title:  " + details.get(0) + " excluded by ai = " + aiResponse);
+            return false; // Skip this job card if the extended text does not match filter criteria
+        }
+        details.add(extendedText);
+        //                    System.out.println("Extended text added: " + extendedText);
         return true;
     }
 
@@ -196,7 +190,7 @@ public class ExtractJobDetails {
                 showMoreButton.click();
                 showMoreVisible = true; // Exit loop if the button was clicked
                 System.out.println("Clicked 'Show more' button.");
-            } catch (NoSuchElementException | TimeoutException e) {
+            } catch (Exception e) {
                 // If the "Show more" button is not found, collapse the previous job card if possible
                 if (i > 0) {
                     WebElement previousJobCard = jobCards.get(i - 1);
