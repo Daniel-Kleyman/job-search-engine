@@ -1,6 +1,9 @@
 package com.danielkleyman.jobsearchind.service;
 
 
+import com.danielkleyman.jobsearchapi.service.AIService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
@@ -12,6 +15,8 @@ import org.springframework.web.client.RestTemplate;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static com.danielkleyman.jobsearchind.service.IndService.LOGGER;
 
@@ -33,35 +38,79 @@ public class ExtractJobDetails {
     }
 
     private void extractProcess(WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails) {
+        String pageSource = driver.getPageSource();
+        // Define the regex pattern to find the embedded JSON data
+        String regexPattern = "window.mosaic.providerData\\[\"mosaic-provider-jobcards\"\\]=(\\{.+?\\});";
+        Pattern pattern = Pattern.compile(regexPattern);
+        Matcher matcher = pattern.matcher(pageSource);
 
-        System.out.println("Waiting for page to load...");
+        if (matcher.find()) {
+            String jsonString = matcher.group(1);
 
-        try {
-            System.out.println("Searching for job container");
-            // Wait until the job container is visible
-            WebElement jobContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//ul[contains(@class, 'jobs-search__results-list')]")));
-            System.out.println("Job container is found");
-            // Find all job cards on the page
-            List<WebElement> jobCards = driver.findElements(By.xpath("//div[contains(@class, 'job-search-card')]"));
-            if (jobCards.isEmpty()) {
-                System.err.println("No job cards found.");
-                return;
+            // Parse the JSON data
+            ObjectMapper objectMapper = new ObjectMapper();
+            try {
+                JsonNode rootNode = objectMapper.readTree(jsonString);
+                JsonNode resultsNode = rootNode.path("metaData").path("mosaicProviderJobCardsModel").path("results");
+
+                //  Print or process the extracted data
+                // System.out.println("Extracted Results Node:");
+                // System.out.println(resultsNode.toPrettyString());
+
+                // If you want to see individual job listings or specific fields, iterate through the resultsNode
+                if (resultsNode.isArray()) {
+                    for (JsonNode jobNode : resultsNode) {
+                        // Extract and print job details
+                        String jobTitle = jobNode.path("displayTitle").asText();
+                        String companyName = jobNode.path("company").asText();
+                        String city = jobNode.path("jobLocationCity").asText();
+                        String url = jobNode.path("link").asText();
+                        String jobDescription = jobNode.path("snippet").asText();
+
+                        System.out.println("Job Title: " + jobTitle);
+                        System.out.println("Company: " + companyName);
+                        System.out.println("City: " + city);
+                        System.out.println("URL: " + url);
+                        System.out.println("Description: " + jobDescription);
+                        System.out.println("-------------------------------");
+                    }
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
             }
-            System.out.println("Job cards are found");
-            jobCardsParsing(driver, wait, jobDetails, jobCards);
-
-        } catch (TimeoutException e) {
-            System.err.println("Timeout while waiting for job container: " + e.getMessage());
-        } catch (Exception e) {
-            System.err.println("Unexpected error: " + e.getMessage());
+        } else {
+            System.out.println("No embedded data found.");
         }
-        System.out.println("Jobs visible: " + jobsVisibleOnPage);
-        jobsVisibleOnPage = 0;
     }
+//        System.out.println("Waiting for page to load...");
+//
+//        try {
+//            System.out.println("Searching for job container");
+//            // Wait until the job container is visible
+//            WebElement jobContainer = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//ul[contains(@class, 'jobs-search__results-list')]")));
+//            System.out.println("Job container is found");
+//            // Find all job cards on the page
+//            List<WebElement> jobCards = driver.findElements(By.xpath("//div[contains(@class, 'job-search-card')]"));
+//            if (jobCards.isEmpty()) {
+//                System.err.println("No job cards found.");
+//                return;
+//            }
+//            System.out.println("Job cards are found");
+//            jobCardsParsing(driver, wait, jobDetails, jobCards);
+//
+//        } catch (TimeoutException e) {
+//            System.err.println("Timeout while waiting for job container: " + e.getMessage());
+//        } catch (Exception e) {
+//            System.err.println("Unexpected error: " + e.getMessage());
+//        }
+//        System.out.println("Jobs visible: " + jobsVisibleOnPage);
+//        jobsVisibleOnPage = 0;
+    //   }
 
     private void jobCardsParsing(WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails, List<WebElement> jobCards) throws TimeoutException {
         for (int i = 0; i < jobCards.size(); i++) {
-            int timeout = IndService.jobCount * 10000;
+            int timeout = 15 * 10000;
             final int index = i;
             boolean stopParsing = executeWithTimeout(() -> singleCardParsing(jobCards, index, driver, wait, jobDetails), timeout);
             if (!stopParsing) {

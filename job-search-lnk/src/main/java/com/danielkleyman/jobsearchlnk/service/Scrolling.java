@@ -4,6 +4,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ public class Scrolling implements Runnable {
     private final WebDriver driver;
     private volatile boolean running = true; // Control flag for thread execution
     Map<String, String> jobDetails;
+    private Thread scrollThread; // Reference to the scrolling thread
 
     public Scrolling(WebDriver driver) {
         this.driver = driver;
@@ -63,11 +65,20 @@ public class Scrolling implements Runnable {
     // Method to stop the thread
     public void stop() {
         running = false;
+        if (scrollThread != null) {
+            try {
+                scrollThread.join(); // Wait for the thread to finish
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt(); // Restore interrupted status
+            }
+        }
     }
 
     // Method to start the thread
     public void start() {
-        new Thread(this).start();
+
+        scrollThread = new Thread(this);
+        scrollThread.start();
     }
 }
 

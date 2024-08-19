@@ -1,6 +1,6 @@
 package com.danielkleyman.jobsearchlnk.service;
 
-import com.danielkleyman.jobsearchlnk.gpt.AIService;
+import com.danielkleyman.jobsearchapi.service.AIService;
 import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
@@ -240,7 +240,8 @@ public class ExtractJobDetails {
                 "reliability", "account", "representative", "Architect", "Analyst", "Account", "Executive", "Specialist", "Associate", "devtest", "big data", "digital",
                 "coordinator", "intern", "researcher", "network", "security", "malware", " intelligence", " algo-dev", "electro-optics", "secops", "implementer",
                 "ml", "picker", "revenue", "controller", "פלנר", "טכנאי", "emulation", "tester", "counsel", "administrative", "assistant", "production", " scientist",
-                "penetration", " investigations", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff", "automation");
+                "penetration", " investigations", "מנהל", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff", "automation", "machine learning"
+                , "mechanic", "ראש", "sr");
         Set<String> includeKeywords = Set.of(
                 "developer", "engineer", "programmer", "backend", "back-end", "back end", "fullstack", "full-stack", "full stack",
                 "software", "fs", "java", "מתחנת", "מפתח"
@@ -263,7 +264,7 @@ public class ExtractJobDetails {
     private static boolean filterDescription(String aboutJob) {
         String aboutJob1 = aboutJob.toLowerCase();
         Set<String> includeKeywords = Set.of("java", "spring", "microservice", "react", "javascript", "oop",
-                "typescript", "backend", "back-end", "back end", "fullstack", "full-stack", "full stack"
+                "typescript", "backend", "back-end", "back end", "מפתח", "מתכנת", "fullstack", "full-stack", "full stack"
         );
 
         return includeKeywords.stream()
