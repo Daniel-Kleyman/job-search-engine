@@ -1,16 +1,15 @@
 package com.danielkleyman.jobsearchlnk.service;
 
 import com.danielkleyman.jobsearchapi.service.AIService;
-import org.openqa.selenium.By;
 import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
+import org.openqa.selenium.*;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.Duration;
+import java.util.NoSuchElementException;
 import java.util.*;
 import java.util.concurrent.*;
 

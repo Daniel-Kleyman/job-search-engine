@@ -4,11 +4,14 @@ package com.danielkleyman.jobsearchind.service;
 import com.danielkleyman.jobsearchapi.service.AIService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +41,8 @@ public class ExtractJobDetails {
         String regexPattern = "window.mosaic.providerData\\[\"mosaic-provider-jobcards\"\\]=(\\{.+?\\});";
         Pattern pattern = Pattern.compile(regexPattern);
         Matcher matcher = pattern.matcher(pageSource);
+        List<String> details = new ArrayList<>();
+        String baseUrl = "https://www.indeed.com/m/basecamp/viewjob?viewtype=embedded&jk=";
 
         if (matcher.find()) {
             String jsonString = matcher.group(1);
@@ -57,11 +62,26 @@ public class ExtractJobDetails {
                     for (JsonNode jobNode : resultsNode) {
                         // Extract and print job details
                         String jobTitle = jobNode.path("displayTitle").asText();
-                        String companyName = jobNode.path("company").asText();
-                        String city = jobNode.path("jobLocationCity").asText();
-                        String url = jobNode.path("link").asText();
-                        String jobDescription = jobNode.path("snippet").asText();
+                        if (!filterTitle(jobTitle)) {
+                            System.out.println("Job title excluded: " + jobTitle);
+                            continue;
+                        }
+                        details.add(jobTitle);
                         String jobKey = jobNode.path("jobkey").asText();
+                        String url = baseUrl + jobKey;
+                        Thread.sleep(IndService.randomTimeoutCalculation(2000, 3000));
+                        String jobDescription = getJobDescription(driver, wait, url);
+                        Thread.sleep(IndService.randomTimeoutCalculation(2000, 3000));
+                        if (!filterDescription(jobDescription)) {
+                            System.out.println("Job description excluded for jon title: " + jobTitle);
+                            continue;
+                        }
+                        details.add(jobDescription);
+                        String companyName = jobNode.path("company").asText();
+                        details.add(companyName);
+                        String city = jobNode.path("jobLocationCity").asText();
+                        details.add(city);
+                        jobDetails.putIfAbsent(url, details);
 
                         System.out.println("Job Title: " + jobTitle);
                         System.out.println("Company: " + companyName);
@@ -80,53 +100,47 @@ public class ExtractJobDetails {
             System.out.println("No embedded data found.");
         }
     }
-//    private void extractJobDetails(WebDriver driver, WebDriverWait wait, String jobKey) {
-//        // Navigate to the full job details page using the jobKey
-//        String url = "https://www.indeed.com/m/basecamp/viewjob?viewtype=embedded&jk=" + jobKey;
-//        driver.get(url);
-//
-//        // Wait for the page to load and the _initialData to be present
-//        wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
-//
-//        // Get the page source
-//        String pageSource = driver.getPageSource();
-//
-//        // Define the regex pattern to find the embedded JSON data
-//        String regexPattern = "_initialData=(\\{.+?\\});";
-//        Pattern pattern = Pattern.compile(regexPattern);
-//        Matcher matcher = pattern.matcher(pageSource);
-//
-//        if (matcher.find()) {
-//            String jsonString = matcher.group(1);
-//
-//            // Parse the JSON data
-//            ObjectMapper objectMapper = new ObjectMapper();
-//            try {
-//                JsonNode rootNode = objectMapper.readTree(jsonString);
-//                JsonNode jobInfoWrapperNode = rootNode.path("jobInfoWrapperModel");
-//                JsonNode jobInfoModelNode = jobInfoWrapperNode.path("jobInfoModel");
-//
-//                // Extract and print job details
-//                String jobTitle = jobInfoModelNode.path("title").asText();
-//                String companyName = jobInfoModelNode.path("company").asText();
-//                String city = jobInfoModelNode.path("location").asText();
-//                String url = jobInfoModelNode.path("url").asText();
-//                String jobDescription = jobInfoModelNode.path("description").asText();
-//
-//                System.out.println("Job Title: " + jobTitle);
-//                System.out.println("Company: " + companyName);
-//                System.out.println("City: " + city);
-//                System.out.println("URL: " + url);
-//                System.out.println("Description: " + jobDescription);
-//                System.out.println("-------------------------------");
-//
-//            } catch (Exception e) {
-//                e.printStackTrace();
-//            }
-//        } else {
-//            System.out.println("No embedded data found.");
-//        }
-//    }
+
+
+    private String getJobDescription(WebDriver driver, WebDriverWait wait, String url) {
+        driver.get(url);
+
+        // Wait for the page to load and the _initialData to be present
+        wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
+
+        // Get the page source
+        String pageSource = driver.getPageSource();
+
+        // Define the regex pattern to find the embedded JSON data
+        String regexPattern = "_initialData=(\\{.+?\\});";
+        Pattern pattern = Pattern.compile(regexPattern);
+        Matcher matcher = pattern.matcher(pageSource);
+        String jobDescription = "";
+        if (matcher.find()) {
+            String jsonString = matcher.group(1);
+
+            // Parse the JSON data
+            ObjectMapper objectMapper = new ObjectMapper();
+            try {
+                JsonNode rootNode = objectMapper.readTree(jsonString);
+                JsonNode jobInfoWrapperNode = rootNode.path("jobInfoWrapperModel");
+                JsonNode jobInfoModelNode = jobInfoWrapperNode.path("jobInfoModel");
+
+                // Extract and print job details
+                jobDescription = jobInfoModelNode.path("description").asText();
+                System.out.println("URL: " + url);
+                System.out.println("Description: " + jobDescription);
+                System.out.println("-------------------------------");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("No embedded data found.");
+        }
+        return jobDescription;
+    }
+
     private static boolean filterTitle(String jobTitle) {
         Set<String> excludeKeywords = Set.of(
                 "senior", "lead", "leader", "devops", "manager", "qa", "mechanical", "infrastructure", "integration", "civil",

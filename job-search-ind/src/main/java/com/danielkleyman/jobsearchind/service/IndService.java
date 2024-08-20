@@ -60,12 +60,9 @@ public class IndService {
         try {
             for (String url : listUrl) {
                 openPage(driver, wait, url);
-                //       scroller.start();
-                //      Thread.sleep((long) (15 * 0.6 * 1000));
-                //       scroller.stop();
-                //      LOGGER.info("Scrolling stopped");
                 extractJobDetails.extractJobDetails(driver, wait, JOB_DETAILS);
                 WriteToExcel.writeToExcel(JOB_DETAILS, WEBSITE_NAME);
+                Thread.sleep(randomTimeoutCalculation(3000, 6000));
             }
 
             long endTime = System.currentTimeMillis();
@@ -73,6 +70,8 @@ public class IndService {
             LOGGER.info("Extraction completed in " + totalTime + " seconds");
             LOGGER.info("Jobs parsed: " + JOB_DETAILS.size());
             JOB_DETAILS.clear();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         } finally {
             if (driver != null) {
                 driver.quit();
@@ -80,10 +79,16 @@ public class IndService {
         }
     }
 
+   public static long randomTimeoutCalculation(long min, long max) {
+        Random random = new Random();
+        // Generate a random long value between 3000 and 6000 milliseconds
+        return min + random.nextInt((int) (max - min + 1));
+    }
+
     private void openPage(WebDriver driver, WebDriverWait wait, String url) {
         boolean reload = true;
-  //      while (reload) {
-            driver.get(url);
+        //      while (reload) {
+        driver.get(url);
 //            try {
 //                WebElement jobCounter = wait.until(ExpectedConditions.visibilityOfElementLocated(
 //                        By.cssSelector(".results-context-header__job-count")));
