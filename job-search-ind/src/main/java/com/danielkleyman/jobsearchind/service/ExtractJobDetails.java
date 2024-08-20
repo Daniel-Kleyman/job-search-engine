@@ -42,7 +42,6 @@ public class ExtractJobDetails {
         Pattern pattern = Pattern.compile(regexPattern);
         Matcher matcher = pattern.matcher(pageSource);
         String baseUrl = "https://www.indeed.com/m/basecamp/viewjob?viewtype=embedded&jk=";
-
         if (matcher.find()) {
             String jsonString = matcher.group(1);
             // Parse the JSON data
@@ -60,6 +59,7 @@ public class ExtractJobDetails {
                         List<String> details = new ArrayList<>();
                         String jobKey = jobNode.path("jobkey").asText();
                         String url = baseUrl + jobKey;
+                        IndService.jobCount++;
                         if (IndService.urlAlreadyAdded.contains(url)) {
                             continue;
                         }
@@ -134,7 +134,7 @@ public class ExtractJobDetails {
                 JsonNode jobDataNode = rootNode.path("hostQueryExecutionResult").path("data").path("jobData").path("results").get(0).path("job").path("description");
                 jobDescriptionText = jobDataNode.path("text").asText();
 
-               return jobDescriptionText;
+                return jobDescriptionText;
 
             } catch (Exception e) {
                 e.printStackTrace();
