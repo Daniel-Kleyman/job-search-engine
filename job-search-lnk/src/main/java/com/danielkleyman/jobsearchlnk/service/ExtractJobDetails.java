@@ -248,7 +248,7 @@ public class ExtractJobDetails {
 
         // Check if any exclude keyword is present in the job title
         boolean shouldExclude = excludeKeywords.stream()
-                .anyMatch(jobTitle::contains);
+                .anyMatch(jobTitle.toLowerCase()::contains);
 
         // Check if any include keyword is present in the job title
 //        boolean shouldInclude = includeKeywords.stream()

@@ -29,6 +29,7 @@ public class IndService {
     public static Set<String> alreadyAdded = new HashSet<>();
     private final List<String> listUrl = Arrays.asList(URL1, URL2, URL3, URL4);
     private final ExtractJobDetails extractJobDetails; // Injected dependency
+    public static List<String> urlAlreadyAdded = new ArrayList<>();
 
     @Autowired
     public IndService(ExtractJobDetails extractJobDetails) {
@@ -61,10 +62,9 @@ public class IndService {
             for (String url : listUrl) {
                 openPage(driver, wait, url);
                 extractJobDetails.extractJobDetails(driver, wait, JOB_DETAILS);
-                WriteToExcel.writeToExcel(JOB_DETAILS, WEBSITE_NAME);
                 Thread.sleep(randomTimeoutCalculation(3000, 6000));
             }
-
+            WriteToExcel.writeToExcel(JOB_DETAILS, WEBSITE_NAME);
             long endTime = System.currentTimeMillis();
             long totalTime = (endTime - startTime) / 1000;
             LOGGER.info("Extraction completed in " + totalTime + " seconds");
