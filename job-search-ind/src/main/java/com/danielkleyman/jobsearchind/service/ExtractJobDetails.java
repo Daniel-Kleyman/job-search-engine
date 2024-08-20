@@ -6,27 +6,38 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.danielkleyman.jobsearchind.service.IndService.CHROME_DRIVER_PATH;
 
 
 @Component
 public class ExtractJobDetails {
     public final AIService aiService;
     int jobsVisibleOnPage;
+    private ExecutorService executorService;
 
     public ExtractJobDetails() {
         this.aiService = new AIService(new RestTemplate());
         this.jobsVisibleOnPage = 0;
+        this.executorService = Executors.newSingleThreadExecutor(); // Create a single thread executor
     }
 
     public void extractJobDetails(WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails) {
@@ -72,7 +83,10 @@ public class ExtractJobDetails {
                         System.out.println("Job Title: " + jobTitle);
                         details.add(jobTitle);
                         Thread.sleep(IndService.randomTimeoutCalculation(2000, 3000));
-                        String jobDescription = getJobDescription(driver, wait, url);
+                        // Execute the getJobDescription in a separate thread
+                        Future<String> futureDescription = executorService.submit(new JobDescriptionTask(url));
+                        String jobDescription = futureDescription.get(); // This will block until the result is available
+                        //String jobDescription = getJobDescription(driver, wait, url);
                         Thread.sleep(IndService.randomTimeoutCalculation(2000, 3000));
                         if (!filterDescription(jobDescription)) {
                             System.out.println("Job description excluded for job title: " + jobTitle);
@@ -101,6 +115,53 @@ public class ExtractJobDetails {
         }
     }
 
+    private class JobDescriptionTask implements Callable<String> {
+        private final String url;
+
+        public JobDescriptionTask(String url) {
+            this.url = url;
+        }
+
+        @Override
+        public String call() throws Exception {
+            WebDriver driver = initializeWebDriver();
+            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            String jobDescriptionText = "";
+
+            try {
+                driver.get(url);
+                wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
+                String pageSource = driver.getPageSource();
+                String regexPattern = "_initialData=(\\{.+?\\});";
+                Pattern pattern = Pattern.compile(regexPattern);
+                Matcher matcher = pattern.matcher(pageSource);
+                if (matcher.find()) {
+                    String jsonString = matcher.group(1);
+                    ObjectMapper objectMapper = new ObjectMapper();
+                    try {
+                        JsonNode rootNode = objectMapper.readTree(jsonString);
+                        JsonNode jobDataNode = rootNode.path("hostQueryExecutionResult").path("data").path("jobData").path("results").get(0).path("job").path("description");
+                        jobDescriptionText = jobDataNode.path("text").asText();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                } else {
+                    System.out.println("No embedded data found.");
+                }
+            } finally {
+                driver.quit();
+            }
+
+            return jobDescriptionText;
+        }
+    }
+
+    private WebDriver initializeWebDriver() {
+        System.setProperty("webdriver.chrome.driver", CHROME_DRIVER_PATH);
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--incognito");
+        return new ChromeDriver(options);
+    }
 
     private String getJobDescription(WebDriver driver, WebDriverWait wait, String url) {
         String jobDescriptionText = "";

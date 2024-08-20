@@ -68,6 +68,7 @@ public class IndService {
                 Thread.sleep(randomTimeoutCalculation(4000, 8000));
                 extractJobDetails.extractJobDetails(driver, wait, JOB_DETAILS);
                 Thread.sleep(randomTimeoutCalculation(4000, 8000));
+                LOGGER.info("Jobs found: " + jobCount);
                 clickNextPage(driver, wait);
             }
             WriteToExcel.writeToExcel(JOB_DETAILS, WEBSITE_NAME);
