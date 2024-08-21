@@ -32,7 +32,6 @@ public class IndService {
 
     @Autowired
     public IndService(ExtractJobDetails extractJobDetails) {
-
         this.extractJobDetails = extractJobDetails; // Initialize injected dependency
         jobCount = 0;
     }
@@ -61,12 +60,12 @@ public class IndService {
         WebDriverWait jobDescriptionWait = new WebDriverWait(jobDescriptionDriver, Duration.ofSeconds(10));
         driver.get(URL);
         try {
-            while (isNextPageButtonVisible(driver, wait)) {
+            while (isNextPageButtonVisible(wait)) {
                 Thread.sleep(randomTimeoutCalculation(4000, 8000));
                 extractJobDetails.extractProcess(driver, JOB_DETAILS, jobDescriptionDriver, jobDescriptionWait);
                 Thread.sleep(randomTimeoutCalculation(4000, 8000));
                 LOGGER.info("Jobs found: " + jobCount);
-                clickNextPage(driver, wait);
+                clickNextPage(wait);
             }
             WriteToExcel.writeToExcel(JOB_DETAILS, WEBSITE_NAME);
             long endTime = System.currentTimeMillis();
@@ -85,7 +84,7 @@ public class IndService {
         }
     }
 
-    private boolean isNextPageButtonVisible(WebDriver driver, WebDriverWait wait) {
+    private boolean isNextPageButtonVisible(WebDriverWait wait) {
         try {
             WebElement nextPageButton = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("a[data-testid='pagination-page-next']")));
             return nextPageButton.isDisplayed();
@@ -94,7 +93,7 @@ public class IndService {
         }
     }
 
-    public void clickNextPage(WebDriver driver, WebDriverWait wait) {
+    public void clickNextPage(WebDriverWait wait) {
         try {
             // Wait until the "Next Page" button is clickable
             WebElement nextPageButton = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("a[data-testid='pagination-page-next']")));

@@ -1,13 +1,10 @@
 package com.danielkleyman.jobsearchind.service;
 
-
 import com.danielkleyman.jobsearchapi.service.AIService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openqa.selenium.By;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Component;
@@ -20,9 +17,6 @@ import java.util.Set;
 import java.util.concurrent.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static com.danielkleyman.jobsearchind.service.IndService.CHROME_DRIVER_PATH;
-
 
 @Component
 public class ExtractJobDetails {
@@ -153,16 +147,8 @@ public class ExtractJobDetails {
             } else {
                 System.out.println("No embedded data found.");
             }
-
             return jobDescriptionText;
         }
-    }
-
-    private WebDriver initializeWebDriver() {
-        System.setProperty("webdriver.chrome.driver", CHROME_DRIVER_PATH);
-        ChromeOptions options = new ChromeOptions();
-        options.addArguments("--incognito");
-        return new ChromeDriver(options);
     }
 
     private static boolean filterTitle(String jobTitle) {
