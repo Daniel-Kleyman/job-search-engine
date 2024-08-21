@@ -171,6 +171,7 @@ public class ExtractJobDetails {
             }
             int aiResponse = aiService.getResponse(extendedText);
             System.out.println(" " + details.get(0) + " gpt score = " + aiResponse);
+            System.out.println("----------------------------------------");
             if (aiResponse < 21) {
                 //   System.out.println("text for job title:  " + details.get(0) + " excluded by ai = " + aiResponse);
                 return false; // Skip this job card if the extended text does not match filter criteria
@@ -240,7 +241,7 @@ public class ExtractJobDetails {
                 "coordinator", "intern", "researcher", "network", "security", "malware", " intelligence", " algo-dev", "electro-optics", "secops", "implementer",
                 "ml", "picker", "revenue", "controller", "פלנר", "טכנאי", "emulation", "tester", "counsel", "administrative", "assistant", "production", " scientist",
                 "penetration", " investigations", "מנהל", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff", "automation", "machine learning"
-                , "mechanic", "ראש", "sr");
+                , "mechanic", "ראש", "sr", "writer");
         Set<String> includeKeywords = Set.of(
                 "developer", "engineer", "programmer", "backend", "back-end", "back end", "fullstack", "full-stack", "full stack",
                 "software", "fs", "java", "מתחנת", "מפתח"
