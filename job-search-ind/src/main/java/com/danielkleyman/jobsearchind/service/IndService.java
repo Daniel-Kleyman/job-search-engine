@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 @Service
 public class IndService {
 
-    private static final long SCHEDULED_TIME = 7200000;
+    private static final long SCHEDULED_TIME = 86400000;
     public static final Logger LOGGER = Logger.getLogger(IndService.class.getName());
     public static final String CHROME_DRIVER_PATH = System.getenv("CHROME_DRIVER_PATH");
     private static final String WEBSITE_NAME = "Indeed";
@@ -109,7 +109,7 @@ public class IndService {
         return min + random.nextInt((int) (max - min + 1));
     }
 
-    private WebDriver initializeWebDriver() {
+    static public WebDriver initializeWebDriver() {
         if (CHROME_DRIVER_PATH == null) {
             throw new IllegalStateException("CHROME_DRIVER_PATH environment variable not set");
         }

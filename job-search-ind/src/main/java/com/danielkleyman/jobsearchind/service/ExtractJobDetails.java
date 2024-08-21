@@ -182,7 +182,7 @@ public class ExtractJobDetails {
                 "coordinator", "intern", "researcher", "network", "security", "malware", " intelligence", " algo-dev", "electro-optics", "secops", "implementer",
                 "ml", "picker", "revenue", "controller", "פלנר", "טכנאי", "emulation", "tester", "counsel", "administrative", "assistant", "production", " scientist",
                 "penetration", " investigations", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff", "automation", "machine learning"
-                , "mechanic", "ראש", "sr", "server", "writer");
+                , "mechanic", "ראש", "sr", "server", "writer", "בכיר", "בודק", "מנתח");
         // Check if any exclude keyword is present in the job title
         return excludeKeywords.stream()
                 .anyMatch(jobTitle.toLowerCase()::contains);
