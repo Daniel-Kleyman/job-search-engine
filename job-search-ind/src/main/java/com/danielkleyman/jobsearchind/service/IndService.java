@@ -57,11 +57,13 @@ public class IndService {
     public void getResults(WebDriver driver, WebDriverWait wait) {
         jobCount = 0;
         long startTime = System.currentTimeMillis();
+        WebDriver jobDescriptionDriver = initializeWebDriver();
+        WebDriverWait jobDescriptionWait = new WebDriverWait(jobDescriptionDriver, Duration.ofSeconds(10));
         driver.get(URL);
         try {
             while (isNextPageButtonVisible(driver, wait)) {
                 Thread.sleep(randomTimeoutCalculation(4000, 8000));
-                extractJobDetails.extractJobDetails(driver, wait, JOB_DETAILS);
+                extractJobDetails.extractProcess(driver, JOB_DETAILS, jobDescriptionDriver, jobDescriptionWait);
                 Thread.sleep(randomTimeoutCalculation(4000, 8000));
                 LOGGER.info("Jobs found: " + jobCount);
                 clickNextPage(driver, wait);
@@ -78,6 +80,7 @@ public class IndService {
         } finally {
             if (driver != null) {
                 driver.quit();
+                jobDescriptionDriver.quit();
             }
         }
     }
@@ -109,7 +112,7 @@ public class IndService {
         return min + random.nextInt((int) (max - min + 1));
     }
 
-    static public WebDriver initializeWebDriver() {
+    private WebDriver initializeWebDriver() {
         if (CHROME_DRIVER_PATH == null) {
             throw new IllegalStateException("CHROME_DRIVER_PATH environment variable not set");
         }

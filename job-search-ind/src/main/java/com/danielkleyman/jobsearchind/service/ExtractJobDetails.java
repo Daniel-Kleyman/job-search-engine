@@ -13,7 +13,6 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,11 +36,7 @@ public class ExtractJobDetails {
         this.executorService = Executors.newSingleThreadExecutor(); // Create a single thread executor
     }
 
-    public void extractJobDetails(WebDriver driver, WebDriverWait wait, Map<String, List<String>> jobDetails) {
-        extractProcess(driver, jobDetails);
-    }
-
-    private void extractProcess(WebDriver driver, Map<String, List<String>> jobDetails) {
+    public void extractProcess(WebDriver driver, Map<String, List<String>> jobDetails, WebDriver jobDescriptionDriver, WebDriverWait jobDescriptionWait) {
         String pageSource = driver.getPageSource();
         // Define the regex pattern to find the embedded JSON data
         String regexPattern = "window.mosaic.providerData\\[\"mosaic-provider-jobcards\"\\]=(\\{.+?\\});";
@@ -59,7 +54,7 @@ public class ExtractJobDetails {
                 // System.out.println(resultsNode.toPrettyString());
                 // If you want to see individual job listings or specific fields, iterate through the resultsNode
                 if (resultsNode.isArray()) {
-                    detailsExtractor(resultsNode, jobDetails);
+                    detailsExtractor(resultsNode, jobDetails, jobDescriptionDriver, jobDescriptionWait);
                 }
             } catch (Exception e) {
                 e.printStackTrace();
@@ -69,7 +64,7 @@ public class ExtractJobDetails {
         }
     }
 
-    private void detailsExtractor(JsonNode resultsNode, Map<String, List<String>> jobDetails) throws InterruptedException, ExecutionException {
+    private void detailsExtractor(JsonNode resultsNode, Map<String, List<String>> jobDetails, WebDriver jobDescriptionDriver, WebDriverWait jobDescriptionWait) throws InterruptedException, ExecutionException {
         for (JsonNode jobNode : resultsNode) {
             List<String> details = new ArrayList<>();
             String jobKey = jobNode.path("jobkey").asText();
@@ -83,7 +78,7 @@ public class ExtractJobDetails {
             details.add(jobTitle);
             Thread.sleep(IndService.randomTimeoutCalculation(2000, 3000));
             // Execute the getJobDescription in a separate thread
-            Future<String> futureDescription = executorService.submit(new JobDescriptionTask(url));
+            Future<String> futureDescription = executorService.submit(new JobDescriptionTask(url, jobDescriptionDriver, jobDescriptionWait));
             String jobDescription = futureDescription.get(); // This will block until the result is available
             Thread.sleep(IndService.randomTimeoutCalculation(2000, 3000));
             if (!descriptionCheck(jobDescription, jobTitle)) {
@@ -127,39 +122,38 @@ public class ExtractJobDetails {
 
     private class JobDescriptionTask implements Callable<String> {
         private final String url;
+        WebDriver driver;
+        WebDriverWait wait;
 
-        public JobDescriptionTask(String url) {
+        public JobDescriptionTask(String url, WebDriver jobDescriptionDriver, WebDriverWait jobDescriptionWait) {
             this.url = url;
+            this.driver = jobDescriptionDriver;
+            this.wait = jobDescriptionWait;
         }
 
         @Override
         public String call() throws Exception {
-            WebDriver driver = initializeWebDriver();
-            WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
             String jobDescriptionText = "";
-            try {
-                driver.get(url);
-                wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
-                String pageSource = driver.getPageSource();
-                String regexPattern = "_initialData=(\\{.+?\\});";
-                Pattern pattern = Pattern.compile(regexPattern);
-                Matcher matcher = pattern.matcher(pageSource);
-                if (matcher.find()) {
-                    String jsonString = matcher.group(1);
-                    ObjectMapper objectMapper = new ObjectMapper();
-                    try {
-                        JsonNode rootNode = objectMapper.readTree(jsonString);
-                        JsonNode jobDataNode = rootNode.path("hostQueryExecutionResult").path("data").path("jobData").path("results").get(0).path("job").path("description");
-                        jobDescriptionText = jobDataNode.path("text").asText();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                } else {
-                    System.out.println("No embedded data found.");
+            driver.get(url);
+            wait.until(ExpectedConditions.visibilityOfElementLocated(By.tagName("body")));
+            String pageSource = driver.getPageSource();
+            String regexPattern = "_initialData=(\\{.+?\\});";
+            Pattern pattern = Pattern.compile(regexPattern);
+            Matcher matcher = pattern.matcher(pageSource);
+            if (matcher.find()) {
+                String jsonString = matcher.group(1);
+                ObjectMapper objectMapper = new ObjectMapper();
+                try {
+                    JsonNode rootNode = objectMapper.readTree(jsonString);
+                    JsonNode jobDataNode = rootNode.path("hostQueryExecutionResult").path("data").path("jobData").path("results").get(0).path("job").path("description");
+                    jobDescriptionText = jobDataNode.path("text").asText();
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            } finally {
-                driver.quit();
+            } else {
+                System.out.println("No embedded data found.");
             }
+
             return jobDescriptionText;
         }
     }
