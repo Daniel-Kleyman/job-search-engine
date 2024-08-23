@@ -169,7 +169,8 @@ public class ExtractJobDetails {
                 System.out.println("Extended text excluded for job: " + details.get(0));
                 return false; // Skip this job card if the extended text does not match filter criteria
             }
-            int aiResponse = aiService.getResponse(extendedText);
+            String prompt = details.get(0) + ". " + extendedText;
+            int aiResponse = aiService.getResponse(prompt);
             System.out.println(" " + details.get(0) + " gpt score = " + aiResponse);
             System.out.println("----------------------------------------");
             if (aiResponse < 21) {

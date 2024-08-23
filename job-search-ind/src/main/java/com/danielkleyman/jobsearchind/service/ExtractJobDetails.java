@@ -97,7 +97,8 @@ public class ExtractJobDetails {
             System.out.println("Job description excluded for job title: " + jobTitle);
             return false;
         }
-        int aiResponse = aiService.getResponse(jobDescription);
+        String prompt = jobTitle + ". " + jobDescription;
+        int aiResponse = aiService.getResponse(prompt);
         System.out.println(jobTitle + " gpt score = " + aiResponse);
         return aiResponse >= 21; // Skip this job card if the extended text does not match filter criteria
     }
