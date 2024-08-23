@@ -154,7 +154,7 @@ public class ExtractJobDetails {
 
     private static boolean filterTitle(String jobTitle) {
         Set<String> excludeKeywords = Set.of(
-                "senior", "lead", "leader", "devops", "manager", "qa", "mechanical", "infrastructure", "integration", "civil",
+                "lead", "leader", "devops", "manager", "qa", "mechanical", "infrastructure", "integration", "civil",
                 "principal", "customer", "embedded", "system", " verification", "electrical", "support", "complaint", "solution", "solutions", "simulation", "technical",
                 "manufacturing", "validation", "finops", "hardware", "devsecops", "motion", "machine Learning", "design", "sr.", "quality", "architect", "head",
                 "director", "president", "executive", "detection", "industrial", "chief", "specialist", "algorithm", "architecture", "admin", " researcher",
@@ -163,7 +163,7 @@ public class ExtractJobDetails {
                 "coordinator", "intern", "researcher", "network", "security", "malware", " intelligence", " algo-dev", "electro-optics", "secops", "implementer",
                 "ml", "picker", "revenue", "controller", "פלנר", "טכנאי", "emulation", "tester", "counsel", "administrative", "assistant", "production", " scientist",
                 "penetration", " investigations", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff", "automation", "machine learning"
-                , "mechanic", "ראש", "sr", "server", "writer", "בכיר", "בודק", "מנתח");
+                , "mechanic", "ראש", "server", "writer", "בכיר", "בודק", "מנתח");
         // Check if any exclude keyword is present in the job title
         return excludeKeywords.stream()
                 .anyMatch(jobTitle.toLowerCase()::contains);

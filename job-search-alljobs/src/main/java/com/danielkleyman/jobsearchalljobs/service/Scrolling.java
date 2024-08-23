@@ -1,4 +1,4 @@
-package com.danielkleyman.jobsearchind.service;
+package com.danielkleyman.jobsearchalljobs.service;
 
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;

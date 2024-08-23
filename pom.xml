@@ -19,6 +19,7 @@
     <modules>
         <module>job-search-lnk</module>
         <module>job-search-ind</module>
+        <module>job-search-alljobs</module>
         <!-- Add other modules here -->
     </modules>
     <url/>
@@ -48,11 +49,7 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-java</artifactId>
-            <version>4.23.0</version>
-        </dependency>
+
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
