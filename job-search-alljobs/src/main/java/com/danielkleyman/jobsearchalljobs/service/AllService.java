@@ -1,7 +1,7 @@
 package com.danielkleyman.jobsearchalljobs.service;
 
-import com.danielkleyman.jobsearchapi.service.WriteToExcel;
 import com.microsoft.playwright.*;
+import com.microsoft.playwright.options.ViewportSize;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -16,6 +16,7 @@ public class AllService {
     private static final long SCHEDULED_TIME = 86400000;
     public static final Logger LOGGER = Logger.getLogger(AllService.class.getName());
     private static final String WEBSITE_NAME = "AllJobs";
+    public static final String CHROME_DRIVER_PATH = System.getenv("CHROME_DRIVER_PATH");
     private final String URL = "https://www.alljobs.co.il/SearchResultsGuest.aspx?page=1&position=&type=&city=&region=";
     private final Map<String, List<String>> JOB_DETAILS = new LinkedHashMap<>();
     private final ExtractJobDetails extractJobDetails; // Injected dependency
@@ -23,15 +24,25 @@ public class AllService {
     public static int jobCount;
     private final Playwright playwright;
     private final Browser browser;
+    private final BrowserContext context;
 
     @Autowired
     public AllService(ExtractJobDetails extractJobDetails) {
+
         this.extractJobDetails = extractJobDetails; // Initialize injected dependency
         jobCount = 0;
         this.playwright = Playwright.create();
         this.browser = playwright.chromium().launch(new BrowserType.LaunchOptions()
                 .setHeadless(false)
-                .setArgs(List.of("--incognito"))); // Add the --incognito argument
+                .setArgs(List.of(
+                        "--incognito",
+                        "--disable-blink-features=AutomationControlled",
+                        "--disable-infobars",
+                        "--disable-extensions",
+                        "--disable-popup-blocking"
+                )));// Add the --incognito argument
+        this.context = browser.newContext(new Browser.NewContextOptions()
+                .setViewportSize(new ViewportSize(1920, 1080))); // Set viewport size
     }
 
     @Scheduled(fixedRate = SCHEDULED_TIME)
@@ -46,33 +57,35 @@ public class AllService {
     public void getResults(Page page) {
         jobCount = 0;
         long startTime = System.currentTimeMillis();
+        boolean scrapingStatus = true;
         page.navigate(URL);
-        while (isNextPageButtonVisible(page)) {
+        try {
+            Thread.sleep(randomTimeoutCalculation(4000, 8000));
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        while (scrapingStatus) {
             try {
-                Thread.sleep(randomTimeoutCalculation(4000, 8000));
-          //      extractJobDetails.extractProcess(page, JOB_DETAILS);
-                Thread.sleep(randomTimeoutCalculation(4000, 8000));
-                LOGGER.info("Jobs found: " + jobCount);
+                scrapingStatus = extractJobDetails.extractProcess(page, JOB_DETAILS);
+                LOGGER.info("Jobs found current: " + jobCount);
                 clickNextPage(page);
+                Thread.sleep(randomTimeoutCalculation(4000, 8000));
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
         }
-        WriteToExcel.writeToExcel(JOB_DETAILS, WEBSITE_NAME);
+        //   WriteToExcel.writeToExcel(JOB_DETAILS, WEBSITE_NAME);
         long endTime = System.currentTimeMillis();
         long totalTime = (endTime - startTime) / 1000;
         LOGGER.info("Extraction completed in " + totalTime + " seconds");
-        LOGGER.info("Jobs found: " + jobCount);
+        LOGGER.info("Jobs found finally: " + jobCount);
         LOGGER.info("Jobs parsed: " + JOB_DETAILS.size());
         JOB_DETAILS.clear();
-    }
-
-    private boolean isNextPageButtonVisible(Page page) {
-        try {
-            Locator nextPageButton = page.locator("//*[@id='divResults']/div[9]/div/div/div[1]/a");
-            return nextPageButton.isVisible();
-        } catch (Exception e) {
-            return false;
+        if (browser != null) {
+            browser.close();
+        }
+        if (playwright != null) {
+            playwright.close();
         }
     }
 
