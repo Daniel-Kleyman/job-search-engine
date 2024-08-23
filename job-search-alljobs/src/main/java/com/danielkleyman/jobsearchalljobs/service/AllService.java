@@ -57,16 +57,17 @@ public class AllService {
     public void getResults(Page page) {
         jobCount = 0;
         long startTime = System.currentTimeMillis();
-        boolean scrapingStatus = true;
         page.navigate(URL);
         try {
             Thread.sleep(randomTimeoutCalculation(4000, 8000));
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        while (scrapingStatus) {
+        while (true) {
             try {
-                scrapingStatus = extractJobDetails.extractProcess(page, JOB_DETAILS);
+                if (!extractJobDetails.extractProcess(page, JOB_DETAILS)) {
+                    break;
+                }
                 LOGGER.info("Jobs found current: " + jobCount);
                 clickNextPage(page);
                 Thread.sleep(randomTimeoutCalculation(4000, 8000));
@@ -106,6 +107,5 @@ public class AllService {
         // Generate a random long value between 3000 and 6000 milliseconds
         return min + random.nextInt((int) (max - min + 1));
     }
-
 }
 
