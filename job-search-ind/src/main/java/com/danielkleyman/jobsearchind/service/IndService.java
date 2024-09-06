@@ -2,6 +2,7 @@ package com.danielkleyman.jobsearchind.service;
 
 import com.danielkleyman.jobsearchapi.service.WriteToExcel;
 import org.openqa.selenium.By;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -61,6 +62,7 @@ public class IndService {
         driver.get(URL);
         try {
             while (isNextPageButtonVisible(wait)) {
+                closePushWindow(driver);
                 Thread.sleep(randomTimeoutCalculation(4000, 8000));
                 extractJobDetails.extractProcess(driver, JOB_DETAILS, jobDescriptionDriver, jobDescriptionWait);
                 Thread.sleep(randomTimeoutCalculation(4000, 8000));
@@ -77,11 +79,19 @@ public class IndService {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
-            if (driver != null) {
-                driver.quit();
-                jobDescriptionDriver.quit();
-            }
+            driver.quit();
+            jobDescriptionDriver.quit();
         }
+    }
+
+    private void closePushWindow(WebDriver driver) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(2));
+        try {
+            WebElement closeButton = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("#mosaic-desktopserpjapopup > div.css-g6agtu.eu4oa1w0 > button")));
+            closeButton.click();
+        } catch (TimeoutException e) {
+        }
+        ;
     }
 
     private boolean isNextPageButtonVisible(WebDriverWait wait) {

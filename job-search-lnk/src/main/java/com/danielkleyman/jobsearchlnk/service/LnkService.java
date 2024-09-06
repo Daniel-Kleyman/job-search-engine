@@ -77,26 +77,26 @@ public class LnkService {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
-        } finally {
-            if (driver != null) {
-                driver.quit();
-            }
         }
+//        finally {
+//            if (driver != null) {
+//                driver.quit();
+//            }
+//        }
     }
 
     private void openPage(WebDriver driver, WebDriverWait wait) {
         boolean reload = true;
         while (reload) {
             driver.get(MAIN_URL);
+            closePushWindow(driver);
             try {
                 WebElement jobCounter = wait.until(ExpectedConditions.visibilityOfElementLocated(
                         By.cssSelector(".results-context-header__job-count")));
-
                 if (jobCounter != null) {
                     LOGGER.info("proceeding");
                     reload = false;
                 }
-
             } catch (TimeoutException e) {
                 try {
                     WebElement element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"main-content\"]/section[1]/h1/strong")));
@@ -118,6 +118,16 @@ public class LnkService {
                 LOGGER.severe("Interrupted while waiting: " + ex.getMessage());
             }
         }
+    }
+
+    private void closePushWindow(WebDriver driver) {
+        WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(2));
+        try {
+            WebElement closeButton = wait.until(ExpectedConditions.visibilityOfElementLocated(By.cssSelector("#base-contextual-sign-in-modal > div > section > button")));
+            closeButton.click();
+        } catch (TimeoutException e) {
+        }
+        ;
     }
 
     private WebDriver initializeWebDriver() {

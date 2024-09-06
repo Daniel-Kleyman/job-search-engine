@@ -242,7 +242,7 @@ public class ExtractJobDetails {
                 "coordinator", "intern", "researcher", "network", "security", "malware", " intelligence", " algo-dev", "electro-optics", "secops", "implementer",
                 "ml", "picker", "revenue", "controller", "פלנר", "טכנאי", "emulation", "tester", "counsel", "administrative", "assistant", "production", " scientist",
                 "penetration", " investigations", "מנהל", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff", "automation", "machine learning"
-                , "mechanic", "ראש", "writer");
+                , "mechanic", "ראש", "writer", "ר\"צ", "psychometrician", "ר'צ", "technician");
         Set<String> includeKeywords = Set.of(
                 "developer", "engineer", "programmer", "backend", "back-end", "back end", "fullstack", "full-stack", "full stack",
                 "software", "fs", "java", "מתחנת", "מפתח"
