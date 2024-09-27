@@ -23,6 +23,7 @@ public class ExtractJobDetails {
     public final AIService aiService;
     int jobsVisibleOnPage;
     private final ExecutorService executorService;
+    int aiResponse;
 
     public ExtractJobDetails() {
         this.aiService = new AIService(new RestTemplate());
@@ -88,6 +89,7 @@ public class ExtractJobDetails {
         details.add(companyName);
         String city = jobNode.path("jobLocationCity").asText();
         details.add(city);
+        details.add(String.valueOf(aiResponse));
         jobDetails.putIfAbsent(url, details);
         System.out.println("-------------------------------");
     }
@@ -98,7 +100,7 @@ public class ExtractJobDetails {
             return false;
         }
         String prompt = jobTitle + ". " + jobDescription;
-        int aiResponse = aiService.getResponse(prompt);
+        aiResponse = aiService.getResponse(prompt);
         System.out.println(jobTitle + " gpt score = " + aiResponse);
         return aiResponse >= 21; // Skip this job card if the extended text does not match filter criteria
     }
@@ -156,13 +158,13 @@ public class ExtractJobDetails {
         Set<String> excludeKeywords = Set.of(
                 "lead", "leader", "devops", "manager", "qa", "mechanical", "infrastructure", "integration", "civil",
                 "principal", "customer", "embedded", "system", " verification", "electrical", "support", "complaint", "solution", "solutions", "simulation", "technical",
-                "manufacturing", "validation", "finops", "hardware", "devsecops", "motion", "machine Learning", "design", "sr.", "quality", "architect", "head",
+                "manufacturing", "validation", "finops", "hardware", "devsecops", "motion", "machine Learning", "design", "quality", "architect", "head",
                 "director", "president", "executive", "detection", "industrial", "chief", "specialist", "algorithm", "architecture", "admin", " researcher",
                 " data science", "webmaster", "medical", "associate", "mrb", "accountant", "waiter", "dft", "test", "musicologist", "sales", "media", "product",
                 "reliability", "account", "representative", "Architect", "Analyst", "Account", "Executive", "Specialist", "Associate", "devtest", "big data", "digital",
                 "coordinator", "intern", "researcher", "network", "security", "malware", " intelligence", " algo-dev", "electro-optics", "secops", "implementer",
                 "ml", "picker", "revenue", "controller", "פלנר", "טכנאי", "emulation", "tester", "counsel", "administrative", "assistant", "production", " scientist",
-                "penetration", " investigations", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff", "automation", "machine learning"
+                "penetration", " investigations", "intelligence", "hrbp", "officer", "curriculum", " business", "staff", "automation", "machine learning"
                 , "mechanic", "ראש", "server", "writer", "בכיר", "בודק", "מנתח", "ר”צ");
         // Check if any exclude keyword is present in the job title
         return excludeKeywords.stream()

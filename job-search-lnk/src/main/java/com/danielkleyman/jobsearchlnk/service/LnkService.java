@@ -22,7 +22,7 @@ import java.util.logging.Logger;
 public class LnkService {
 
     private static final long SCHEDULED_TIME = 900000;
-    private static final String SCHEDULED_TIME_STRING = "3600";
+    private static final String SCHEDULED_TIME_STRING = "900";
     public static final Logger LOGGER = Logger.getLogger(LnkService.class.getName());
     public static final String CHROME_DRIVER_PATH = System.getenv("CHROME_DRIVER_PATH");
     private static final String WEBSITE_NAME = "Linkedin";

@@ -20,6 +20,7 @@ import static com.danielkleyman.jobsearchlnk.service.LnkService.LOGGER;
 public class ExtractJobDetails {
     public final AIService aiService;
     int jobsVisibleOnPage;
+    int aiResponse;
 
     public ExtractJobDetails() {
         this.aiService = new AIService(new RestTemplate());
@@ -99,7 +100,7 @@ public class ExtractJobDetails {
             extractCompanyName(details, wait);
             // Extract city
             extractCity(details, wait);
-
+            details.add(aiResponse +"");
             // Add job details to the map
             jobDetails.putIfAbsent(jobUrl, details);
             LnkService.alreadyAdded.add(extractedPart);
@@ -170,7 +171,7 @@ public class ExtractJobDetails {
                 return false; // Skip this job card if the extended text does not match filter criteria
             }
             String prompt = details.get(0) + ". " + extendedText;
-            int aiResponse = aiService.getResponse(prompt);
+            aiResponse = aiService.getResponse(prompt);
             System.out.println(" " + details.get(0) + " gpt score = " + aiResponse);
             System.out.println("----------------------------------------");
             if (aiResponse < 21) {
@@ -235,13 +236,13 @@ public class ExtractJobDetails {
         Set<String> excludeKeywords = Set.of(
                 "lead", "leader", "devops", "manager", "qa", "mechanical", "infrastructure", "integration", "civil",
                 "principal", "customer", "embedded", "system", " verification", "electrical", "support", "complaint", "solution", "solutions", "simulation", "technical",
-                "manufacturing", "validation", "finops", "hardware", "devsecops", "motion", "machine Learning", "design", "sr.", "quality", "architect", "head",
+                "manufacturing", "validation", "finops", "hardware", "devsecops", "motion", "machine Learning", "design", "quality", "architect", "head",
                 "director", "president", "executive", "detection", "industrial", "chief", "specialist", "algorithm", "architecture", "admin", " researcher",
                 " data science", "webmaster", "medical", "associate", "mrb", "accountant", "waiter", "dft", "test", "musicologist", "sales", "media", "product",
                 "reliability", "account", "representative", "Architect", "Analyst", "Account", "Executive", "Specialist", "Associate", "devtest", "big data", "digital",
                 "coordinator", "intern", "researcher", "network", "security", "malware", " intelligence", " algo-dev", "electro-optics", "secops", "implementer",
                 "ml", "picker", "revenue", "controller", "פלנר", "טכנאי", "emulation", "tester", "counsel", "administrative", "assistant", "production", " scientist",
-                "penetration", " investigations", "מנהל", "intelligence", "hrbp", "officer", "curriculum", " business", "team", "staff", "automation", "machine learning"
+                "penetration", " investigations", "מנהל", "intelligence", "hrbp", "officer", "curriculum", " business", "staff", "automation", "machine learning"
                 , "mechanic", "ראש", "writer", "ר\"צ", "psychometrician", "ר'צ", "technician");
         Set<String> includeKeywords = Set.of(
                 "developer", "engineer", "programmer", "backend", "back-end", "back end", "fullstack", "full-stack", "full stack",
@@ -264,7 +265,7 @@ public class ExtractJobDetails {
 
     private static boolean filterDescription(String aboutJob) {
         String aboutJob1 = aboutJob.toLowerCase();
-        Set<String> includeKeywords = Set.of("java", "spring", "microservice", "react", "javascript", "oop",
+        Set<String> includeKeywords = Set.of("java", "spring", "microservice", "microservices","react", "javascript", "oop",
                 "typescript", "backend", "back-end", "back end", "מפתח", "מתכנת", "fullstack", "full-stack", "full stack"
         );
 
